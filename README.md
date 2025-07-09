@@ -74,21 +74,13 @@ _Si van a crear mas endpoints como el login o registrarse recuerden actualizar p
 - [x] Mostrar que los roles se comportan correctamente.
 - [x] Incluir usuarios de prueba (`user`, `tech`) y contraseñas.
 
-### Instrucciones de ejecución
+### Instruccion de ejecución y de prueba
 
-#### Opción 1: Con Docker (Recomendado)
+#### Con Docker 
 
 ```bash
 # Construir y ejecutar con Docker Compose
 docker compose up --build
-```
-
-#### Opción 2: Local
-
-```bash
-# 1. Tener PostgreSQL corriendo en localhost:5432
-# 2. Ejecutar la aplicación
-./mvnw spring-boot:run
 ```
 
 ### Usuarios de prueba

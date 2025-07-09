@@ -45,4 +45,13 @@ public interface TicketService {
      * @return una lista de todos los tickets
      */
     List<TicketResponseList> getAllTickets();
+
+    /**
+     * Verifica si un usuario es propietario de un ticket.
+     *
+     * @param ticketId  el ID del ticket
+     * @param userEmail el correo del usuario
+     * @return true si el usuario es propietario del ticket
+     */
+    boolean isTicketOwner(Long ticketId, String userEmail);
 }

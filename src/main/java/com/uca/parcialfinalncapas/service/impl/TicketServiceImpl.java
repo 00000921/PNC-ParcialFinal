@@ -28,72 +28,92 @@ import java.util.List;
 @AllArgsConstructor
 public class TicketServiceImpl implements TicketService {
 
-    private final TicketRepository ticketRepository;
-    private final UserRepository userRepository;
+        private final TicketRepository ticketRepository;
+        private final UserRepository userRepository;
 
-    @Override
-    @Transactional
-    public TicketResponse createTicket(TicketCreateRequest ticket) {
-        var usuarioSolicitante = userRepository.findByCorreo(ticket.getCorreoUsuario())
-                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado con correo: " + ticket.getCorreoUsuario()));
+        @Override
+        @Transactional
+        public TicketResponse createTicket(TicketCreateRequest ticket) {
+                var usuarioSolicitante = userRepository.findByCorreo(ticket.getCorreoUsuario())
+                                .orElseThrow(() -> new UserNotFoundException(
+                                                "Usuario no encontrado con correo: " + ticket.getCorreoUsuario()));
 
-        var usuarioSoporte = userRepository.findByCorreo(ticket.getCorreoSoporte())
-                .orElseThrow(() -> new UserNotFoundException("Usuario asignado no encontrado con correo: " + ticket.getCorreoSoporte()));
+                var usuarioSoporte = userRepository.findByCorreo(ticket.getCorreoSoporte())
+                                .orElseThrow(() -> new UserNotFoundException(
+                                                "Usuario asignado no encontrado con correo: "
+                                                                + ticket.getCorreoSoporte()));
 
-        if (!usuarioSoporte.getNombreRol().equals(Rol.TECH.getValue())) {
-            throw new BadTicketRequestException("El usuario asignado no es un técnico de soporte");
+                if (!usuarioSoporte.getNombreRol().equals(Rol.TECH.getValue())) {
+                        throw new BadTicketRequestException("El usuario asignado no es un técnico de soporte");
+                }
+
+                var ticketGuardado = ticketRepository.save(TicketMapper.toEntityCreate(ticket,
+                                usuarioSolicitante.getId(), usuarioSoporte.getId()));
+
+                return TicketMapper.toDTO(ticketGuardado, usuarioSolicitante.getCorreo(), usuarioSoporte.getCorreo());
         }
 
-        var ticketGuardado = ticketRepository.save(TicketMapper.toEntityCreate(ticket, usuarioSolicitante.getId(), usuarioSoporte.getId()));
+        @Override
+        @Transactional
+        public TicketResponse updateTicket(TicketUpdateRequest ticket) {
+                Ticket ticketExistente = ticketRepository.findById(ticket.getId())
+                                .orElseThrow(() -> new TicketNotFoundException(
+                                                "Ticket no encontrado con ID: " + ticket.getId()));
 
-        return TicketMapper.toDTO(ticketGuardado, usuarioSolicitante.getCorreo(), usuarioSoporte.getCorreo());
-    }
+                var usuarioSolicitante = userRepository.findById(ticketExistente.getUsuarioId())
+                                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
 
-    @Override
-    @Transactional
-    public TicketResponse updateTicket(TicketUpdateRequest ticket) {
-        Ticket ticketExistente = ticketRepository.findById(ticket.getId())
-                .orElseThrow(() -> new TicketNotFoundException("Ticket no encontrado con ID: " + ticket.getId()));
+                var usuarioSoporte = userRepository.findByCorreo(ticket.getCorreoSoporte())
+                                .orElseThrow(() -> new UserNotFoundException(
+                                                "Usuario asignado no encontrado con correo: "
+                                                                + ticket.getCorreoSoporte()));
 
-        var usuarioSolicitante = userRepository.findById(ticketExistente.getUsuarioId())
-                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
+                if (!usuarioSoporte.getNombreRol().equals(Rol.TECH.getValue())) {
+                        throw new BadTicketRequestException("El usuario asignado no es un técnico de soporte");
+                }
 
-        var usuarioSoporte = userRepository.findByCorreo(ticket.getCorreoSoporte())
-                .orElseThrow(() -> new UserNotFoundException("Usuario asignado no encontrado con correo: " + ticket.getCorreoSoporte()));
+                var ticketGuardado = ticketRepository
+                                .save(TicketMapper.toEntityUpdate(ticket, usuarioSoporte.getId(), ticketExistente));
 
-        if (!usuarioSoporte.getNombreRol().equals(Rol.TECH.getValue())) {
-            throw new BadTicketRequestException("El usuario asignado no es un técnico de soporte");
+                return TicketMapper.toDTO(ticketGuardado, usuarioSolicitante.getCorreo(), usuarioSoporte.getCorreo());
         }
 
-        var ticketGuardado = ticketRepository.save(TicketMapper.toEntityUpdate(ticket, usuarioSoporte.getId(), ticketExistente));
+        @Override
+        public void deleteTicket(Long id) {
+                var ticketExistente = ticketRepository.findById(id)
+                                .orElseThrow(() -> new TicketNotFoundException("Ticket no encontrado con ID: " + id));
 
-        return TicketMapper.toDTO(ticketGuardado, usuarioSolicitante.getCorreo(), usuarioSoporte.getCorreo());
-    }
+                ticketRepository.delete(ticketExistente);
+        }
 
-    @Override
-    public void deleteTicket(Long id) {
-        var ticketExistente = ticketRepository.findById(id)
-                .orElseThrow(() -> new TicketNotFoundException("Ticket no encontrado con ID: " + id));
+        @Override
+        public TicketResponse getTicketById(Long id) {
+                var ticketExistente = ticketRepository.findById(id)
+                                .orElseThrow(() -> new TicketNotFoundException("Ticket no encontrado con ID: " + id));
 
-        ticketRepository.delete(ticketExistente);
-    }
+                var usuarioSolicitante = userRepository.findById(ticketExistente.getUsuarioId())
+                                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
 
-    @Override
-    public TicketResponse getTicketById(Long id) {
-    var ticketExistente = ticketRepository.findById(id)
-            .orElseThrow(() -> new TicketNotFoundException("Ticket no encontrado con ID: " + id));
+                var usuarioSoporte = userRepository.findById(ticketExistente.getTecnicoAsignadoId())
+                                .orElseThrow(() -> new UserNotFoundException("Usuario asignado no encontrado"));
 
-    var usuarioSolicitante = userRepository.findById(ticketExistente.getUsuarioId())
-            .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
+                return TicketMapper.toDTO(ticketExistente, usuarioSolicitante.getCorreo(), usuarioSoporte.getCorreo());
+        }
 
-    var usuarioSoporte = userRepository.findById(ticketExistente.getTecnicoAsignadoId())
-            .orElseThrow(() -> new UserNotFoundException("Usuario asignado no encontrado"));
+        @Override
+        public List<TicketResponseList> getAllTickets() {
+                return TicketMapper.toDTOList(ticketRepository.findAll());
+        }
 
-        return TicketMapper.toDTO(ticketExistente, usuarioSolicitante.getCorreo(), usuarioSoporte.getCorreo());
-    }
+        @Override
+        public boolean isTicketOwner(Long ticketId, String userEmail) {
+                var ticket = ticketRepository.findById(ticketId)
+                                .orElseThrow(() -> new TicketNotFoundException(
+                                                "Ticket no encontrado con ID: " + ticketId));
 
-    @Override
-    public List<TicketResponseList> getAllTickets() {
-        return TicketMapper.toDTOList(ticketRepository.findAll());
-    }
+                var user = userRepository.findByCorreo(userEmail)
+                                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
+
+                return ticket.getUsuarioId().equals(user.getId());
+        }
 }
